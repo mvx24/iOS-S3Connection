@@ -9,7 +9,7 @@
 
 #import <Foundation/Foundation.h>
 
-#define S3CONNECTION_ERROR_DOMAIN @"com.symbioticsoftware.S3Connection"
+#define ERROR_DOMAIN_S3CONNECTION @"com.symbioticsoftware.S3Connection"
 
 typedef void (^S3CompletionHandler)(NSError *);
 

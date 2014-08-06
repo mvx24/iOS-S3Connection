@@ -153,7 +153,7 @@
 	if(![data length] || ![key length])
 	{
 		if(completionHandler)
-			completionHandler([NSError errorWithDomain:S3CONNECTION_ERROR_DOMAIN code:0 userInfo:@{NSLocalizedDescriptionKey:STRING_S3_MISSINGPARAMS}]);
+			completionHandler([NSError errorWithDomain:ERROR_DOMAIN_S3CONNECTION code:0 userInfo:@{NSLocalizedDescriptionKey:STRING_S3_MISSINGPARAMS}]);
 		return;
 	}
 	
@@ -194,7 +194,7 @@
 	else
 	{
 		if(completionHandler)
-			completionHandler([NSError errorWithDomain:S3CONNECTION_ERROR_DOMAIN code:0 userInfo:@{NSLocalizedDescriptionKey:STRING_S3_BADCONNECTION}]);
+			completionHandler([NSError errorWithDomain:ERROR_DOMAIN_S3CONNECTION code:0 userInfo:@{NSLocalizedDescriptionKey:STRING_S3_BADCONNECTION}]);
 		[self release];
 	}
 }
@@ -217,7 +217,7 @@
 	if(![path length] || ![key length])
 	{
 		if(completionHandler)
-			completionHandler([NSError errorWithDomain:S3CONNECTION_ERROR_DOMAIN code:0 userInfo:@{NSLocalizedDescriptionKey:STRING_S3_MISSINGPARAMS}]);
+			completionHandler([NSError errorWithDomain:ERROR_DOMAIN_S3CONNECTION code:0 userInfo:@{NSLocalizedDescriptionKey:STRING_S3_MISSINGPARAMS}]);
 		return;
 	}
 	
@@ -225,7 +225,7 @@
 	if(!inputStream)
 	{
 		if(completionHandler)
-			completionHandler([NSError errorWithDomain:S3CONNECTION_ERROR_DOMAIN code:0 userInfo:@{NSLocalizedDescriptionKey:STRING_S3_BADPATH}]);
+			completionHandler([NSError errorWithDomain:ERROR_DOMAIN_S3CONNECTION code:0 userInfo:@{NSLocalizedDescriptionKey:STRING_S3_BADPATH}]);
 		return;
 	}
 	
@@ -271,7 +271,7 @@
 	else
 	{
 		if(completionHandler)
-			completionHandler([NSError errorWithDomain:S3CONNECTION_ERROR_DOMAIN code:0 userInfo:@{NSLocalizedDescriptionKey:STRING_S3_BADCONNECTION}]);
+			completionHandler([NSError errorWithDomain:ERROR_DOMAIN_S3CONNECTION code:0 userInfo:@{NSLocalizedDescriptionKey:STRING_S3_BADCONNECTION}]);
 		[self release];
 	}
 }
@@ -347,7 +347,7 @@
 		[_responseData release];
 		_responseData = nil;
 		if(_completionHandler)
-			_completionHandler([NSError errorWithDomain:S3CONNECTION_ERROR_DOMAIN code:_statusCode userInfo:@{NSLocalizedDescriptionKey:message?message:STRING_S3_HTTPERROR}]);
+			_completionHandler([NSError errorWithDomain:ERROR_DOMAIN_S3CONNECTION code:_statusCode userInfo:@{NSLocalizedDescriptionKey:message?message:STRING_S3_HTTPERROR}]);
 	}
 	else if(_completionHandler)
 	{
