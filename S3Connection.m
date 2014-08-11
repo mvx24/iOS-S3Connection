@@ -159,7 +159,11 @@
 	
 	[self retain];
 	[self cancelCurrentRequest];
-	
+
+	// Don't allow keys to start with a /
+	if([key hasPrefix:@"/"])
+		key = [key substringFromIndex:1];
+
 	// Calculate the MD5 and other headers
 	if(![contentType length])
 		contentType = [self mimeType:key];
@@ -231,6 +235,10 @@
 	
 	[self retain];
 	[self cancelCurrentRequest];
+
+	// Don't allow keys to start with a /
+	if([key hasPrefix:@"/"])
+		key = [key substringFromIndex:1];
 
 	// Calculate the MD5 and other headers
 	contentType = [self mimeType:path];

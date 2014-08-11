@@ -42,6 +42,8 @@ The completion handler will be called when the upload has completed successfully
 
 The method for uploading data is exactly the same as the file, only that contentType is expected because the MIME type cannot be detected as easily like it can with a file.
 
+**NOTE** - Keys shouldn't begin with a `/`. If they do, S3Connection will automatically remove it.
+
 ## Security
 
 It is recommended that you obfuscate your secret access key as much as possible before compiling it into your source code and then deobfuscating at runtime.
