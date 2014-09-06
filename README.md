@@ -44,6 +44,10 @@ The method for uploading data is exactly the same as the file, only that content
 
 **NOTE** - Keys shouldn't begin with a `/`. If they do, S3Connection will automatically remove it.
 
+#### GZIP Data
+
+Files and data encoded with gzip will be detected automatically by S3Connection and the appropriate Content-Encoding: gzip header will be added. Use NSData+gzip to deflate data, found here: <https://github.com/mvx24/NSData-Encoding>
+
 ## Security
 
 It is recommended that you obfuscate your secret access key as much as possible before compiling it into your source code and then deobfuscating at runtime.

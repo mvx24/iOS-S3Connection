@@ -181,6 +181,9 @@
 		url = [NSURL URLWithString:[NSString stringWithFormat:S3_URL, _bucket, key]];
 	request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:15.0];
 	[request setHTTPMethod:@"PUT"];
+	// Check for the gzip magic number and add the Content-Encoding header
+	if(((const uint8_t *)[data bytes])[0] == 0x1f && ((const uint8_t *)[data bytes])[1] == 0x8b)
+		[request addValue:@"gzip" forHTTPHeaderField:@"Content-Encoding"];
 	if([contentType length])
 		[request addValue:contentType forHTTPHeaderField:@"Content-Type"];
 	[request addValue:[NSString stringWithFormat:@"%u", [data length]] forHTTPHeaderField:@"Content-Length"];
@@ -215,6 +218,7 @@
 	CC_MD5_CTX ctx;
 	uint8_t hash[16];
 	uint8_t buf[1024];
+	uint8_t head[2];
 	int len;
 	size_t fileSize = 0;
 	
@@ -246,6 +250,11 @@
 	[inputStream open];
 	while((len = [inputStream read:buf maxLength:sizeof(buf)]) > 0)
 	{
+		if(!fileSize)
+		{
+			head[0] = buf[0];
+			head[1] = buf[1];
+		}
 		CC_MD5_Update(&ctx, buf, len);
 		fileSize += len;
 	}
@@ -262,6 +271,9 @@
 		url = [NSURL URLWithString:[NSString stringWithFormat:S3_URL, _bucket, key]];
 	request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:15.0];
 	[request setHTTPMethod:@"PUT"];
+	// Check for the gzip magic number and add the Content-Encoding header
+	if(head[0] == 0x1f && head[1] == 0x8b)
+		[request addValue:@"gzip" forHTTPHeaderField:@"Content-Encoding"];
 	if([contentType length])
 		[request addValue:contentType forHTTPHeaderField:@"Content-Type"];
 	[request addValue:[NSString stringWithFormat:@"%lu", fileSize] forHTTPHeaderField:@"Content-Length"];
