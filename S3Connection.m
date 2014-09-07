@@ -59,6 +59,7 @@
 	self.accessKeyId = nil;
 	self.secretAccessKey = nil;
 	self.bucket = nil;
+	self.extraHeaders = nil;
 	self.completionHandler = nil;
 	[super dealloc];
 }
@@ -140,7 +141,7 @@
 	return contentType;
 }
 
-- (void)uploadData:(NSData *)data securely:(BOOL)securely withKey:(NSString *)key contentType:(NSString *)contentType completionHandler:(S3CompletionHandler)completionHandler
+- (void)uploadData:(NSData *)data withKey:(NSString *)key contentType:(NSString *)contentType options:(NSUInteger)options completionHandler:(S3CompletionHandler)completionHandler
 {
 	NSURL *url;
 	NSMutableURLRequest *request;
@@ -175,21 +176,32 @@
 	authorization = [self authorizationHeader:@"PUT" withMD5:md5 contentType:contentType date:date resource:key];
 	
 	// Setup the request
-	if(securely)
+	if(options & S3_HTTPS)
 		url = [NSURL URLWithString:[NSString stringWithFormat:S3_SECURE_URL, _bucket, key]];
 	else
 		url = [NSURL URLWithString:[NSString stringWithFormat:S3_URL, _bucket, key]];
 	request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:15.0];
 	[request setHTTPMethod:@"PUT"];
 	// Check for the gzip magic number and add the Content-Encoding header
-	if(((const uint8_t *)[data bytes])[0] == 0x1f && ((const uint8_t *)[data bytes])[1] == 0x8b)
-		[request addValue:@"gzip" forHTTPHeaderField:@"Content-Encoding"];
+	if(options & S3_DETECT_GZIP && ((const uint8_t *)[data bytes])[0] == 0x1f && ((const uint8_t *)[data bytes])[1] == 0x8b)
+		[request setValue:@"gzip" forHTTPHeaderField:@"Content-Encoding"];
+	if(options & S3_NO_CACHE)
+		[request setValue:@"no-cache" forKeyPath:@"Cache-Control"];
+	if(options & S3_PERMANENT_CACHE)
+		[request setValue:@"max-age=315360000" forKeyPath:@"Cache-Control"];
+	if(options & S3_REDUCED_REDUNDANCY)
+		[request setValue:@"REDUCED_REDUNDANCY" forKeyPath:@"x-amz-storage-class"];
 	if([contentType length])
-		[request addValue:contentType forHTTPHeaderField:@"Content-Type"];
-	[request addValue:[NSString stringWithFormat:@"%u", [data length]] forHTTPHeaderField:@"Content-Length"];
-	[request addValue:md5 forHTTPHeaderField:@"Content-MD5"];
-	[request addValue:date forHTTPHeaderField:@"Date"];
-	[request addValue:authorization forHTTPHeaderField:@"Authorization"];
+		[request setValue:contentType forHTTPHeaderField:@"Content-Type"];
+	[request setValue:[NSString stringWithFormat:@"%u", [data length]] forHTTPHeaderField:@"Content-Length"];
+	[request setValue:md5 forHTTPHeaderField:@"Content-MD5"];
+	[request setValue:date forHTTPHeaderField:@"Date"];
+	[request setValue:authorization forHTTPHeaderField:@"Authorization"];
+	if([_extraHeaders count])
+	{
+		for(NSString *header in _extraHeaders)
+			[request addValue:[_extraHeaders objectForKey:header] forHTTPHeaderField:header];
+	}
 	[request setHTTPBody:data];
 	
 	// Start the connection
@@ -206,7 +218,7 @@
 	}
 }
 
-- (void)uploadFile:(NSString *)path securely:(BOOL)securely withKey:(NSString *)key completionHandler:(S3CompletionHandler)completionHandler
+- (void)uploadFile:(NSString *)path withKey:(NSString *)key options:(NSUInteger)options completionHandler:(S3CompletionHandler)completionHandler
 {
 	NSInputStream *inputStream;
 	NSURL *url;
@@ -265,21 +277,32 @@
 	authorization = [self authorizationHeader:@"PUT" withMD5:md5 contentType:contentType date:date resource:key];
 	
 	// Setup the request
-	if(securely)
+	if(options & S3_HTTPS)
 		url = [NSURL URLWithString:[NSString stringWithFormat:S3_SECURE_URL, _bucket, key]];
 	else
 		url = [NSURL URLWithString:[NSString stringWithFormat:S3_URL, _bucket, key]];
 	request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:15.0];
 	[request setHTTPMethod:@"PUT"];
 	// Check for the gzip magic number and add the Content-Encoding header
-	if(head[0] == 0x1f && head[1] == 0x8b)
-		[request addValue:@"gzip" forHTTPHeaderField:@"Content-Encoding"];
+	if(options & S3_DETECT_GZIP && head[0] == 0x1f && head[1] == 0x8b)
+		[request setValue:@"gzip" forHTTPHeaderField:@"Content-Encoding"];
+	if(options & S3_NO_CACHE)
+		[request setValue:@"no-cache" forKeyPath:@"Cache-Control"];
+	if(options & S3_PERMANENT_CACHE)
+		[request setValue:@"max-age=315360000" forKeyPath:@"Cache-Control"];
+	if(options & S3_REDUCED_REDUNDANCY)
+		[request setValue:@"REDUCED_REDUNDANCY" forKeyPath:@"x-amz-storage-class"];
 	if([contentType length])
-		[request addValue:contentType forHTTPHeaderField:@"Content-Type"];
-	[request addValue:[NSString stringWithFormat:@"%lu", fileSize] forHTTPHeaderField:@"Content-Length"];
-	[request addValue:md5 forHTTPHeaderField:@"Content-MD5"];
-	[request addValue:date forHTTPHeaderField:@"Date"];
-	[request addValue:authorization forHTTPHeaderField:@"Authorization"];
+		[request setValue:contentType forHTTPHeaderField:@"Content-Type"];
+	[request setValue:[NSString stringWithFormat:@"%lu", fileSize] forHTTPHeaderField:@"Content-Length"];
+	[request setValue:md5 forHTTPHeaderField:@"Content-MD5"];
+	[request setValue:date forHTTPHeaderField:@"Date"];
+	[request setValue:authorization forHTTPHeaderField:@"Authorization"];
+	if([_extraHeaders count])
+	{
+		for(NSString *header in _extraHeaders)
+			[request addValue:[_extraHeaders objectForKey:header] forHTTPHeaderField:header];
+	}
 	[request setHTTPBodyStream:[NSInputStream inputStreamWithFileAtPath:path]];
 	
 	// Setup the connection
@@ -296,20 +319,20 @@
 	}
 }
 
-+ (void)uploadData:(NSData *)data securely:(BOOL)securely intoBucket:(NSString *)bucket withKey:(NSString *)key contentType:(NSString *)contentType accessKeyId:(NSString *)accessKeyId secretAccessKey:(NSString *)secretAccessKey completionHandler:(S3CompletionHandler)completionHandler
++ (void)uploadData:(NSData *)data intoBucket:(NSString *)bucket withKey:(NSString *)key contentType:(NSString *)contentType options:(NSUInteger)options accessKeyId:(NSString *)accessKeyId secretAccessKey:(NSString *)secretAccessKey completionHandler:(S3CompletionHandler)completionHandler
 {
 	S3Connection *s3connection;
 	s3connection = [[[S3Connection alloc] initWithAccessKeyId:accessKeyId secretAccessKey:secretAccessKey] autorelease];
 	s3connection.bucket = bucket;
-	[s3connection uploadData:data securely:securely withKey:key contentType:contentType completionHandler:completionHandler];
+	[s3connection uploadData:data withKey:key contentType:contentType options:options completionHandler:completionHandler];
 }
 
-+ (void)uploadFile:(NSString *)path securely:(BOOL)securely intoBucket:(NSString *)bucket withKey:(NSString *)key accessKeyId:(NSString *)accessKeyId secretAccessKey:(NSString *)secretAccessKey completionHandler:(S3CompletionHandler)completionHandler
++ (void)uploadFile:(NSString *)path intoBucket:(NSString *)bucket withKey:(NSString *)key options:(NSUInteger)options accessKeyId:(NSString *)accessKeyId secretAccessKey:(NSString *)secretAccessKey completionHandler:(S3CompletionHandler)completionHandler
 {
 	S3Connection *s3connection;
 	s3connection = [[[S3Connection alloc] initWithAccessKeyId:accessKeyId secretAccessKey:secretAccessKey] autorelease];
 	s3connection.bucket = bucket;
-	[s3connection uploadFile:path securely:securely withKey:key completionHandler:completionHandler];
+	[s3connection uploadFile:path withKey:key options:options completionHandler:completionHandler];
 }
 
 #pragma mark - NSURLConnectionDelegate methods
