@@ -230,7 +230,7 @@
 	CC_MD5_CTX ctx;
 	uint8_t hash[16];
 	uint8_t buf[1024];
-	uint8_t head[2];
+	uint8_t head[2] = {0};
 	int len;
 	size_t fileSize = 0;
 	
