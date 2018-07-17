@@ -28,8 +28,17 @@ typedef void (^S3CompletionHandler)(NSError *);
 
 - (id)initWithAccessKeyId:(NSString *)accessKeyId secretAccessKey:(NSString *)secretAccessKey;
 - (void)cancelCurrentRequest;
-- (void)uploadData:(NSData *)data withKey:(NSString *)key contentType:(NSString *)contentType options:(NSUInteger)options completionHandler:(S3CompletionHandler)completionHandler;
-- (void)uploadFile:(NSString *)path withKey:(NSString *)key options:(NSUInteger)options completionHandler:(S3CompletionHandler)completionHandler;
+
+- (void)uploadData:(NSData *)data
+           withKey:(NSString *)key
+       contentType:(NSString *)contentType
+           options:(NSUInteger)options
+ completionHandler:(S3CompletionHandler)completionHandler;
+
+- (void)uploadFile:(NSString *)path
+           withKey:(NSString *)key
+           options:(NSUInteger)options
+ completionHandler:(S3CompletionHandler)completionHandler;
 
 + (void)uploadData:(NSData *)data
 		intoBucket:(NSString *)bucket
