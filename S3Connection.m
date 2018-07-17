@@ -12,13 +12,15 @@
 #import <CommonCrypto/CommonHMAC.h>
 #import <MobileCoreServices/MobileCoreServices.h>
 
-#define S3_URL              @"http://%@.s3.amazonaws.com/%@"
-#define S3_SECURE_URL       @"https://%@.s3.amazonaws.com/%@"
+#define S3_URL                    @"http://%@.s3.amazonaws.com/%@"
+#define S3_SECURE_URL             @"https://%@.s3.amazonaws.com/%@"
 
 #define STRING_S3_BADCONNECTION   @"Could not establish connection."
 #define STRING_S3_MISSINGPARAMS   @"Missing parameters required for this operation."
 #define STRING_S3_BADPATH         @"Could not open file."
 #define STRING_S3_HTTPERROR       @"There was a problem with the request."
+
+#define IS_GZIP(data) ({ const uint8_t *__data = (const uint8_t *)(data); __data[0] == 0x1f && __data[1] == 0x8b; })
 
 @interface S3Connection () <NSURLConnectionDelegate, NSURLConnectionDataDelegate> {
   NSURLConnection *_connection;
@@ -35,6 +37,8 @@
                          resource:(NSString *)resource;
 - (NSString *)dateHeader;
 - (NSString *)mimeType:(NSString *)path;
+- (NSError *)errorWithString:(NSString *)errString;
+- (NSError *)errorWithString:(NSString *)errString code:(NSInteger)code;
 
 @end
 
@@ -136,6 +140,20 @@
   return contentType;
 }
 
+- (NSError *)errorWithString:(NSString *)errString {
+  return [NSError
+          errorWithDomain:ERROR_DOMAIN_S3CONNECTION
+          code:0
+          userInfo:@{NSLocalizedDescriptionKey:errString}];
+}
+
+- (NSError *)errorWithString:(NSString *)errString code:(NSInteger)code {
+  return [NSError
+          errorWithDomain:ERROR_DOMAIN_S3CONNECTION
+          code:code
+          userInfo:@{NSLocalizedDescriptionKey:errString}];
+}
+
 - (void)uploadData:(NSData *)data
            withKey:(NSString *)key
        contentType:(NSString *)contentType
@@ -151,10 +169,7 @@
   
   if(![data length] || ![key length]) {
     if(completionHandler) {
-      completionHandler([NSError
-                         errorWithDomain:ERROR_DOMAIN_S3CONNECTION
-                         code:0
-                         userInfo:@{NSLocalizedDescriptionKey:STRING_S3_MISSINGPARAMS}]);
+      completionHandler([self errorWithString:STRING_S3_MISSINGPARAMS]);
     }
     return;
   }
@@ -195,7 +210,7 @@
              timeoutInterval:15.0];
   [request setHTTPMethod:@"PUT"];
   // Check for the gzip magic number and add the Content-Encoding header
-  if(options & S3_DETECT_GZIP && ((const uint8_t *)[data bytes])[0] == 0x1f && ((const uint8_t *)[data bytes])[1] == 0x8b) {
+  if(options & S3_DETECT_GZIP && IS_GZIP([data bytes])) {
     [request setValue:@"gzip" forHTTPHeaderField:@"Content-Encoding"];
   }
   if(options & S3_NO_CACHE) {
@@ -223,17 +238,12 @@
   
   // Start the connection
   _connection = [NSURLConnection connectionWithRequest:request delegate:self];
-  if(_connection != nil)
-  {
+  if(_connection != nil) {
     self.completionHandler = completionHandler;
-  }
-  else
-  {
-    if(completionHandler)
-      completionHandler([NSError
-                         errorWithDomain:ERROR_DOMAIN_S3CONNECTION
-                         code:0
-                         userInfo:@{NSLocalizedDescriptionKey:STRING_S3_BADCONNECTION}]);
+  } else {
+    if(completionHandler) {
+      completionHandler([self errorWithString:STRING_S3_BADCONNECTION]);
+    }
     [self release];
   }
 }
@@ -258,10 +268,7 @@
   
   if(![path length] || ![key length]) {
     if(completionHandler) {
-      completionHandler([NSError
-                         errorWithDomain:ERROR_DOMAIN_S3CONNECTION
-                         code:0
-                         userInfo:@{NSLocalizedDescriptionKey:STRING_S3_MISSINGPARAMS}]);
+      completionHandler([self errorWithString:STRING_S3_MISSINGPARAMS]);
     }
     return;
   }
@@ -269,9 +276,7 @@
   inputStream = [NSInputStream inputStreamWithFileAtPath:path];
   if(!inputStream) {
     if(completionHandler) {
-      completionHandler([NSError errorWithDomain:ERROR_DOMAIN_S3CONNECTION
-                                            code:0
-                                        userInfo:@{NSLocalizedDescriptionKey:STRING_S3_BADPATH}]);
+      completionHandler([self errorWithString:STRING_S3_BADPATH]);
     }
     return;
   }
@@ -318,7 +323,7 @@
              timeoutInterval:15.0];
   [request setHTTPMethod:@"PUT"];
   // Check for the gzip magic number and add the Content-Encoding header
-  if(options & S3_DETECT_GZIP && head[0] == 0x1f && head[1] == 0x8b) {
+  if(options & S3_DETECT_GZIP && IS_GZIP(head)) {
     [request setValue:@"gzip" forHTTPHeaderField:@"Content-Encoding"];
   }
   if(options & S3_NO_CACHE) {
@@ -350,10 +355,7 @@
     self.completionHandler = completionHandler;
   } else {
     if(completionHandler) {
-      completionHandler([NSError
-                         errorWithDomain:ERROR_DOMAIN_S3CONNECTION
-                         code:0
-                         userInfo:@{NSLocalizedDescriptionKey:STRING_S3_BADCONNECTION}]);
+      completionHandler([self errorWithString:STRING_S3_BADCONNECTION]);
     }
     [self release];
   }
@@ -438,10 +440,7 @@
     [_responseData release];
     _responseData = nil;
     if(_completionHandler) {
-      _completionHandler([NSError
-                          errorWithDomain:ERROR_DOMAIN_S3CONNECTION
-                          code:_statusCode
-                          userInfo:@{NSLocalizedDescriptionKey: (message ? message : STRING_S3_HTTPERROR)}]);
+      _completionHandler([self errorWithString:STRING_S3_HTTPERROR code:_statusCode]);
     }
   } else if(_completionHandler) {
     _completionHandler(nil);
